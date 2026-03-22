@@ -1,9 +1,0 @@
-{
-  "short_name": "Natalie Studio",
-  "name": "Natalie Studio - Salon",
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#3D2C2C",
-  "background_color": "#FDF6F0",
-  "icons": []
-}

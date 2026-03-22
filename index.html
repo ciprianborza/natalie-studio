@@ -185,7 +185,9 @@
           await sb.from("appointments").update(payload).eq("id",editApp);
         } else {
           await sb.from("appointments").insert(payload);
-          if(!clients.find(c=>c.phone===form.phone)) await sb.from("clients").insert({name:form.clientName,phone:form.phone});
+          if(!clients.find(c=>c.name.toLowerCase()===form.clientName.toLowerCase())) {
+            await sb.from("clients").insert({name:form.clientName,phone:""});
+          }
         }
         await fetchAll(); setSaving(false); setShowForm(false);
       }

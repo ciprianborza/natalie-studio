@@ -365,9 +365,9 @@
                     <div style={{width:1,background:C.border,flexShrink:0}}/>
                     <div style={{flex:1,paddingTop:6,paddingBottom:2}}>
                       {app&&<div onClick={()=>openEdit(app)} style={{background:(svc?.color||C.rose)+"22",border:`1.5px solid ${svc?.color||C.rose}`,borderRadius:10,padding:"7px 12px",cursor:"pointer"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
-                          <div><span style={{fontWeight:700,fontSize:13}}>{app.client_name}</span><span style={{fontSize:11,color:C.textMid,marginLeft:8}}>{svc?.name}</span></div>
-                          <Badge status={app.status}/>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontWeight:700,fontSize:13}}>{app.client_name}</span>
+                          <span style={{fontSize:11,color:C.textMid}}>{svc?.name}</span>
                         </div>
                       </div>}
                     </div>
@@ -596,9 +596,12 @@
                 <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3}
                   style={{width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:14,color:C.text,background:C.rosePale,outline:"none",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical"}}/>
               </div>
-              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-                <Btn variant="secondary" onClick={()=>setShowForm(false)}>Anulează</Btn>
-                <Btn onClick={saveApp} style={{opacity:saving?0.6:1}}>{saving?"Se salvează...":editApp?"Salvează":"Adaugă"}</Btn>
+              <div style={{display:"flex",gap:10,justifyContent:"space-between"}}>
+                {editApp && <Btn variant="danger" onClick={()=>{deleteApp(editApp);setShowForm(false);}}>🗑 Șterge</Btn>}
+                <div style={{display:"flex",gap:10,marginLeft:"auto"}}>
+                  <Btn variant="secondary" onClick={()=>setShowForm(false)}>Anulează</Btn>
+                  <Btn onClick={saveApp} style={{opacity:saving?0.6:1}}>{saving?"Se salvează...":editApp?"Salvează":"Adaugă"}</Btn>
+                </div>
               </div>
             </Modal>
           )}

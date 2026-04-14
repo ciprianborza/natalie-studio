@@ -55,17 +55,6 @@
       return m;
     }
 
-    function Badge({status}) {
-      const map = {
-        confirmat:{bg:"#E8F5E8",color:"#4A8A4A",label:"Confirmat"},
-        in_asteptare:{bg:"#FFF8E8",color:"#C9A030",label:"Așteptare"},
-        anulat:{bg:"#FDE8E8",color:"#C94A4A",label:"Anulat"},
-        finalizat:{bg:"#E8F0FD",color:"#4A6AC9",label:"Finalizat"},
-      };
-      const s = map[status]||map.in_asteptare;
-      return <span style={{background:s.bg,color:s.color,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{s.label}</span>;
-    }
-
     function Spinner() {
       return <div style={{display:"flex",justifyContent:"center",padding:"40px 0"}}>
         <div style={{width:36,height:36,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.roseDark}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
@@ -108,6 +97,63 @@
       return <button {...props} style={{padding:small?"7px 14px":"10px 20px",borderRadius:12,fontWeight:700,fontSize:small?12:14,cursor:"pointer",fontFamily:"inherit",...s[variant],...props.style}}>{children}</button>;
     }
 
+    // Week summary modal
+    function WeekSummaryModal({title, apps, services, onClose}) {
+      // Group by date, sorted chronologically
+      const grouped = {};
+      [...apps].sort((a,b)=>a.date.localeCompare(a.date)||a.time.localeCompare(b.time)).forEach(app=>{
+        if(!grouped[app.date]) grouped[app.date]=[];
+        grouped[app.date].push(app);
+      });
+      const days = Object.keys(grouped).sort();
+
+      const dayName = dateStr =>
+        new Date(dateStr+"T12:00:00").toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});
+
+      return (
+        <Modal title={title} onClose={onClose}>
+          {days.length===0
+            ? <div style={{textAlign:"center",color:C.textLight,padding:"30px 0",fontSize:14}}>Nicio programare în această perioadă</div>
+            : days.map(date=>{
+                const dayApps = grouped[date].sort((a,b)=>a.time.localeCompare(b.time));
+                return (
+                  <div key={date} style={{marginBottom:20}}>
+                    <div style={{
+                      fontSize:12,fontWeight:800,color:C.roseDark,letterSpacing:0.5,
+                      textTransform:"uppercase",marginBottom:10,paddingBottom:6,
+                      borderBottom:`2px solid ${C.border}`,
+                      display:"flex",justifyContent:"space-between",alignItems:"center"
+                    }}>
+                      <span>{dayName(date)}</span>
+                      <span style={{background:C.rosePale,color:C.roseDark,borderRadius:20,padding:"2px 10px",fontSize:11}}>{dayApps.length} progr.</span>
+                    </div>
+                    {dayApps.map(app=>{
+                      const svc = services.find(s=>s.id===app.service_id);
+                      return (
+                        <div key={app.id} style={{
+                          display:"flex",alignItems:"center",gap:12,
+                          padding:"9px 0",borderBottom:`1px solid ${C.border}`
+                        }}>
+                          <div style={{width:44,fontWeight:800,color:C.roseDark,fontSize:13,flexShrink:0,textAlign:"center"}}>{app.time}</div>
+                          <div style={{width:4,height:36,borderRadius:4,background:svc?.color||C.rose,flexShrink:0}}/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{app.client_name}</div>
+                            <div style={{fontSize:12,color:C.textLight}}>{svc?.name}{app.staff ? ` · ${app.staff.split(" ")[0]}` : ""}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })
+          }
+          <div style={{marginTop:8,textAlign:"right"}}>
+            <Btn variant="secondary" onClick={onClose}>Închide</Btn>
+          </div>
+        </Modal>
+      );
+    }
+
     function App() {
       const isMobile = useIsMobile();
       const [page, setPage] = useState("dashboard");
@@ -125,12 +171,12 @@
       const [serviceForm, setServiceForm] = useState(null);
       const [saving, setSaving] = useState(false);
       const [error, setError] = useState(null);
-      // Staff management
       const [showStaffForm, setShowStaffForm] = useState(false);
       const [editStaff, setEditStaff] = useState(null);
       const [staffForm, setStaffForm] = useState({name:""});
-      // Service CRUD state
       const [showServiceForm, setShowServiceForm] = useState(false);
+      // Week summary modal state
+      const [weekModal, setWeekModal] = useState(null); // null | {title, apps}
 
       async function fetchAll() {
         setLoading(true);
@@ -151,7 +197,6 @@
 
       const todayApps = appointments.filter(a=>a.date===fmt(today));
 
-      // Săptămâna curentă (luni-duminică)
       const getWeekBounds = (offset=0) => {
         const d = new Date(today);
         const day = d.getDay()===0?7:d.getDay();
@@ -198,12 +243,6 @@
         setAppointments(p=>p.filter(a=>a.id!==id));
       }
 
-      async function changeStatus(id, status) {
-        await sb.from("appointments").update({status}).eq("id",id);
-        setAppointments(p=>p.map(a=>a.id===id?{...a,status}:a));
-      }
-
-      // Service CRUD
       function openAddService() { setServiceForm({name:"",duration:60,price:0,color:"#E8A4A4"}); setEditService(null); setShowServiceForm(true); }
       function openEditService(svc) { setServiceForm({...svc}); setEditService(svc.id); setShowServiceForm(true); }
       async function saveService() {
@@ -221,7 +260,6 @@
         setServices(p=>p.filter(s=>s.id!==id));
       }
 
-      // Staff CRUD
       function openAddStaff() { setStaffForm({name:""}); setEditStaff(null); setShowStaffForm(true); }
       function openEditStaff(s) { setStaffForm({name:s.name}); setEditStaff(s.id); setShowStaffForm(true); }
       async function saveStaff() {
@@ -289,12 +327,20 @@
             {!isMobile&&<div style={{marginBottom:26}}><h1 style={{margin:0,fontSize:30,fontFamily:"Georgia,serif",fontWeight:700}}>Bună ziua! ✦</h1><p style={{margin:"4px 0 0",color:C.textLight,fontSize:14}}>Rezumatul zilei de astăzi</p></div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
               {[
-                {label:"Programări azi",value:todayApps.length,icon:"▦",color:C.roseDark},
-                {label:"Săpt. Curentă",value:thisWeekApps.length,icon:"◈",color:C.roseDark},
-                {label:"Programări mâine",value:appointments.filter(a=>a.date===fmt(new Date(today.getTime()+86400000))).length,icon:"◷",color:C.gold},
-                {label:"Săpt. Viitoare",value:nextWeekApps.length,icon:"◈",color:C.gold},
+                {label:"Programări azi",value:todayApps.length,icon:"▦",color:C.roseDark,clickable:false},
+                {label:"Săpt. Curentă",value:thisWeekApps.length,icon:"◈",color:C.roseDark,clickable:true,
+                  onClick:()=>setWeekModal({title:"Săptămâna Curentă",apps:thisWeekApps})},
+                {label:"Programări mâine",value:appointments.filter(a=>a.date===fmt(new Date(today.getTime()+86400000))).length,icon:"◷",color:C.gold,clickable:false},
+                {label:"Săpt. Viitoare",value:nextWeekApps.length,icon:"◈",color:C.gold,clickable:true,
+                  onClick:()=>setWeekModal({title:"Săptămâna Viitoare",apps:nextWeekApps})},
               ].map((s,i)=>(
-                <div key={i} style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`}}>
+                <div key={i} onClick={s.clickable?s.onClick:undefined} style={{
+                  background:"#fff",borderRadius:16,padding:"14px 16px",
+                  boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,
+                  cursor:s.clickable?"pointer":"default",
+                  transition:s.clickable?"box-shadow 0.15s":"none",
+                  position:"relative",overflow:"hidden",
+                }}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                     <div>
                       <div style={{fontSize:10,color:C.textLight,fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",marginBottom:6}}>{s.label}</div>
@@ -302,9 +348,11 @@
                     </div>
                     <div style={{width:32,height:32,borderRadius:9,background:s.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:s.color}}>{s.icon}</div>
                   </div>
+                  {s.clickable&&<div style={{fontSize:10,color:s.color,fontWeight:700,marginTop:8,letterSpacing:0.3}}>Apasă pentru detalii →</div>}
                 </div>
               ))}
             </div>
+
             <div style={{background:"#fff",borderRadius:18,padding:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <h2 style={{margin:0,fontSize:16,fontFamily:"Georgia,serif",fontWeight:700}}>Programări azi</h2>
@@ -325,8 +373,8 @@
                 })
               }
             </div>
-            {/* Servicii programate azi */}
-            {(() => {
+
+            {(()=>{
               const tomorrow = fmt(new Date(today.getTime()+86400000));
               const tomorrowApps = appointments.filter(a=>a.date===tomorrow);
               const renderServiceBars = (apps, emptyMsg) => {
@@ -357,6 +405,7 @@
                 </div>
               </>;
             })()}
+
             <div style={{background:"#fff",borderRadius:18,padding:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`}}>
               <h2 style={{margin:"0 0 14px",fontSize:16,fontFamily:"Georgia,serif",fontWeight:700}}>Servicii populare</h2>
               {services.map(svc=>{
@@ -544,7 +593,6 @@
         </div>
       );
 
-      // ── STAFF PAGE ─────────────────────────────────────────────
       const StaffPage = () => (
         <div>
           {isMobile&&<MobileHeader title="Specialiști" action={<Btn small onClick={openAddStaff}>+ Nou</Btn>}/>}
@@ -587,6 +635,16 @@
           {!isMobile&&<Sidebar/>}
           <div style={{flex:1,overflow:"auto"}}>{pages[page]}</div>
           {isMobile&&<BottomNav/>}
+
+          {/* WEEK SUMMARY MODAL */}
+          {weekModal&&(
+            <WeekSummaryModal
+              title={weekModal.title}
+              apps={weekModal.apps}
+              services={services}
+              onClose={()=>setWeekModal(null)}
+            />
+          )}
 
           {/* PROGRAMARE MODAL */}
           {showForm&&(

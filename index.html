@@ -33,7 +33,9 @@
       border: "#F0DDD8", success: "#8AAF8A", warn: "#D4A04A",
     };
 
-    const HOURS = Array.from({length:23},(_,i)=>{const h=Math.floor(i/2)+9;const m=i%2===0?"00":"30";return `${String(h).padStart(2,"0")}:${m}`;}).filter(t=>t<="20:00");
+    // Ore de la 06:00 la 21:00, din 30 în 30 de minute
+    const HOURS = Array.from({length:32},(_,i)=>{const h=Math.floor(i/2)+6;const m=i%2===0?"00":"30";return `${String(h).padStart(2,"0")}:${m}`;}).filter(t=>t<="21:00");
+
     const NAV = [
       {id:"dashboard",icon:"⬡",label:"Home"},
       {id:"calendar",icon:"▦",label:"Calendar"},

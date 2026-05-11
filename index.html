@@ -2,488 +2,702 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <meta name="theme-color" content="#3D2C2C" />
-  <title>Natalie Studio - Management Salon</title>
-  
+  <title>Natalie Studio</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-
   <style>
-    :root {
-      --bg: #FDF6F0;
-      --rose-dark: #C97B84;
-      --rose: #E8A4A4;
-      --rose-pale: #FDF0EF;
-      --gold: #C9A96E;
-      --text: #3D2C2C;
-      --text-mid: #7A5C5C;
-      --text-light: #B08080;
-      --border: #F0DDD8;
-      --success: #8AAF8A;
-    }
-
-    * { 
-      box-sizing: border-box; 
-      margin: 0; 
-      padding: 0; 
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body { 
-      font-family: 'Nunito', sans-serif; 
-      background: var(--bg); 
-      color: var(--text);
-      overflow-x: hidden;
-    }
-
-    @keyframes spin { 
-      to { transform: rotate(360deg); } 
-    }
-
-    .custom-scroll::-webkit-scrollbar {
-      width: 4px;
-    }
-    .custom-scroll::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .custom-scroll::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 10px;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Nunito', 'Segoe UI', sans-serif; background: #FDF6F0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect } = React;
 
-    // --- CONFIGURARE SUPABASE ---
-    const sb = supabase.createClient(
+    const { createClient } = supabase;
+    const sb = createClient(
       'https://qmjjrbtjcmthxzwjhfwg.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtampyYnRqY210aHh6d2poZndnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODcwNDEsImV4cCI6MjA4OTc2MzA0MX0.lG-xr_fv0TkHCxRrKDgOYbvYd1QtJgRh6Di-cs0ggZg'
     );
 
     const C = {
-      bg: "#FDF6F0", 
-      roseDark: "#C97B84", 
-      rose: "#E8A4A4", 
-      rosePale: "#FDF0EF",
-      gold: "#C9A96E", 
-      text: "#3D2C2C", 
-      textMid: "#7A5C5C", 
-      textLight: "#B08080",
-      border: "#F0DDD8", 
-      success: "#8AAF8A", 
-      warn: "#D4A04A", 
-      danger: "#C94A4A"
+      bg: "#FDF6F0", roseDark: "#C97B84", rose: "#E8A4A4", rosePale: "#FDF0EF",
+      gold: "#C9A96E", text: "#3D2C2C", textMid: "#7A5C5C", textLight: "#B08080",
+      border: "#F0DDD8", success: "#8AAF8A", warn: "#D4A04A",
     };
 
-    const HOURS = Array.from({length: 32}, (_, i) => {
-      const h = Math.floor(i / 2) + 6;
-      const m = i % 2 === 0 ? "00" : "30";
-      return `${String(h).padStart(2, "0")}:${m}`;
-    }).filter(t => t >= "08:00" && t <= "21:00");
+    // Ore de la 06:00 la 21:00, din 30 în 30 de minute
+    const HOURS = Array.from({length:32},(_,i)=>{const h=Math.floor(i/2)+6;const m=i%2===0?"00":"30";return `${String(h).padStart(2,"0")}:${m}`;}).filter(t=>t<="21:00");
 
     const NAV = [
-      { id: "dashboard", icon: "⬡", label: "Home" },
-      { id: "calendar", icon: "▦", label: "Calendar" },
-      { id: "appointments", icon: "☰", label: "Programări" },
-      { id: "clients", icon: "♡", label: "Clienți" },
-      { id: "services", icon: "✦", label: "Servicii" },
-      { id: "staff", icon: "◈", label: "Specialiști" },
+      {id:"dashboard",icon:"⬡",label:"Home"},
+      {id:"calendar",icon:"▦",label:"Calendar"},
+      {id:"appointments",icon:"☰",label:"Programări"},
+      {id:"clients",icon:"♡",label:"Clienți"},
+      {id:"services",icon:"✦",label:"Servicii"},
+      {id:"staff",icon:"◈",label:"Specialiști"},
     ];
-
     const fmt = d => d.toISOString().split("T")[0];
-    const todayStr = fmt(new Date());
+    const today = new Date();
 
-    // --- COMPONENTE REUTILIZABILE ---
+    function useIsMobile() {
+      const [m, setM] = useState(window.innerWidth < 768);
+      useEffect(() => {
+        const h = () => setM(window.innerWidth < 768);
+        window.addEventListener("resize", h);
+        return () => window.removeEventListener("resize", h);
+      }, []);
+      return m;
+    }
 
     function Spinner() {
-      return (
-        <div style={{ display: "flex", justifyContent: "center", padding: "50px 0" }}>
-          <div style={{ 
-            width: 35, 
-            height: 35, 
-            border: `3px solid ${C.border}`, 
-            borderTop: `3px solid ${C.roseDark}`, 
-            borderRadius: "50%", 
-            animation: "spin 0.8s linear infinite" 
-          }} />
-        </div>
-      );
+      return <div style={{display:"flex",justifyContent:"center",padding:"40px 0"}}>
+        <div style={{width:36,height:36,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.roseDark}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+      </div>;
     }
 
-    function Modal({ title, onClose, children }) {
-      return (
-        <div style={{ 
-          position: "fixed", 
-          inset: 0, 
-          background: "rgba(61,44,44,0.5)", 
-          zIndex: 1000, 
-          display: "flex", 
-          alignItems: "flex-end", 
-          justifyContent: "center",
-          backdropFilter: "blur(2px)"
-        }}>
-          <div style={{ 
-            background: "#fff", 
-            borderRadius: "24px 24px 0 0", 
-            padding: "10px 24px 40px", 
-            width: "100%", 
-            maxWidth: 550, 
-            maxHeight: "92vh", 
-            overflowY: "auto",
-            boxShadow: "0 -5px 25px rgba(0,0,0,0.1)"
-          }}>
-            <div style={{ width: 40, height: 4, background: C.border, borderRadius: 10, margin: "10px auto 20px" }} />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: C.text, fontFamily: "Georgia, serif" }}>{title}</h2>
-              <button onClick={onClose} style={{ background: C.rosePale, border: "none", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", color: C.textLight }}>✕</button>
-            </div>
-            {children}
+    function Modal({title, onClose, children}) {
+      return <div style={{position:"fixed",inset:0,background:"rgba(61,44,44,0.45)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+        <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"8px 22px 40px",width:"100%",maxWidth:560,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 -8px 40px rgba(61,44,44,0.2)"}}>
+          <div style={{width:40,height:4,background:C.border,borderRadius:4,margin:"12px auto 18px"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+            <h2 style={{margin:0,color:C.text,fontSize:20,fontFamily:"Georgia,serif",fontWeight:700}}>{title}</h2>
+            <button onClick={onClose} style={{background:C.rosePale,border:"none",width:32,height:32,borderRadius:"50%",fontSize:14,cursor:"pointer",color:C.textLight}}>✕</button>
           </div>
-        </div>
-      );
-    }
-
-    function FInput({ label, ...props }) {
-      return (
-        <div style={{ marginBottom: 15 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: C.textMid, marginBottom: 6, letterSpacing: 0.5, textTransform: "uppercase" }}>{label}</label>
-          <input {...props} style={{ 
-            width: "100%", 
-            padding: "12px 15px", 
-            borderRadius: 12, 
-            border: `1.5px solid ${C.border}`, 
-            fontSize: 15, 
-            color: C.text, 
-            background: C.rosePale,
-            fontFamily: "inherit",
-            outline: "none"
-          }} />
-        </div>
-      );
-    }
-
-    function FSelect({ label, children, ...props }) {
-      return (
-        <div style={{ marginBottom: 15 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: C.textMid, marginBottom: 6, letterSpacing: 0.5, textTransform: "uppercase" }}>{label}</label>
-          <select {...props} style={{ 
-            width: "100%", 
-            padding: "12px 15px", 
-            borderRadius: 12, 
-            border: `1.5px solid ${C.border}`, 
-            fontSize: 15, 
-            color: C.text, 
-            background: C.rosePale,
-            fontFamily: "inherit",
-            outline: "none"
-          }}>
-            {children}
-          </select>
-        </div>
-      );
-    }
-
-    function Btn({ children, variant = "primary", small, ...props }) {
-      const bStyle = {
-        primary: { background: `linear-gradient(135deg, ${C.roseDark}, ${C.gold})`, color: "#fff", border: "none" },
-        secondary: { background: "transparent", color: C.roseDark, border: `1.5px solid ${C.roseDark}` },
-        danger: { background: "#FEE2E2", color: C.danger, border: "none" }
-      };
-      return (
-        <button {...props} style={{ 
-          padding: small ? "7px 15px" : "12px 20px", 
-          borderRadius: 12, 
-          fontWeight: 700, 
-          fontSize: small ? 12 : 14, 
-          cursor: "pointer", 
-          ...bStyle[variant], 
-          ...props.style 
-        }}>
           {children}
-        </button>
-      );
+        </div>
+      </div>;
     }
 
-    // --- LOGICA APLICAȚIEI ---
+    function FInput({label, ...props}) {
+      return <div style={{marginBottom:13}}>
+        <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>{label}</label>
+        <input {...props} style={{width:"100%",padding:"11px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:15,color:C.text,background:C.rosePale,outline:"none",boxSizing:"border-box",fontFamily:"inherit",...props.style}}/>
+      </div>;
+    }
+
+    function FSelect({label, children, ...props}) {
+      return <div style={{marginBottom:13}}>
+        <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>{label}</label>
+        <select {...props} style={{width:"100%",padding:"11px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:15,color:C.text,background:C.rosePale,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}>{children}</select>
+      </div>;
+    }
+
+    function Btn({children, variant="primary", small, ...props}) {
+      const s = {
+        primary:{background:`linear-gradient(135deg,${C.roseDark},${C.gold})`,color:"#fff",border:"none"},
+        secondary:{background:"transparent",color:C.roseDark,border:`1.5px solid ${C.roseDark}`},
+        danger:{background:"#FDE8E8",color:"#C94A4A",border:"none"},
+      };
+      return <button {...props} style={{padding:small?"7px 14px":"10px 20px",borderRadius:12,fontWeight:700,fontSize:small?12:14,cursor:"pointer",fontFamily:"inherit",...s[variant],...props.style}}>{children}</button>;
+    }
+
+    function WeekSummaryModal({title, apps, services, onClose}) {
+      const grouped = {};
+      [...apps].sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)).forEach(app=>{
+        if(!grouped[app.date]) grouped[app.date]=[];
+        grouped[app.date].push(app);
+      });
+      const days = Object.keys(grouped).sort();
+      const dayName = dateStr =>
+        new Date(dateStr+"T12:00:00").toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});
+      return (
+        <Modal title={title} onClose={onClose}>
+          {days.length===0
+            ? <div style={{textAlign:"center",color:C.textLight,padding:"30px 0",fontSize:14}}>Nicio programare în această perioadă</div>
+            : days.map(date=>{
+                const dayApps = grouped[date].sort((a,b)=>a.time.localeCompare(b.time));
+                return (
+                  <div key={date} style={{marginBottom:20}}>
+                    <div style={{fontSize:12,fontWeight:800,color:C.roseDark,letterSpacing:0.5,textTransform:"uppercase",marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span>{dayName(date)}</span>
+                      <span style={{background:C.rosePale,color:C.roseDark,borderRadius:20,padding:"2px 10px",fontSize:11}}>{dayApps.length} progr.</span>
+                    </div>
+                    {dayApps.map(app=>{
+                      const svc = services.find(s=>s.id===app.service_id);
+                      return (
+                        <div key={app.id} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
+                          <div style={{width:44,fontWeight:800,color:C.roseDark,fontSize:13,flexShrink:0,textAlign:"center"}}>{app.time}</div>
+                          <div style={{width:4,height:36,borderRadius:4,background:svc?.color||C.rose,flexShrink:0}}/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{app.client_name}</div>
+                            <div style={{fontSize:12,color:C.textLight}}>{svc?.name}{app.staff ? ` · ${app.staff.split(" ")[0]}` : ""}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })
+          }
+          <div style={{marginTop:8,textAlign:"right"}}>
+            <Btn variant="secondary" onClick={onClose}>Închide</Btn>
+          </div>
+        </Modal>
+      );
+    }
 
     function App() {
+      const isMobile = useIsMobile();
       const [page, setPage] = useState("dashboard");
-      const [isMobile] = useState(window.innerWidth < 768);
-      const [loading, setLoading] = useState(true);
-
-      // Date principale
       const [appointments, setAppointments] = useState([]);
       const [clients, setClients] = useState([]);
       const [services, setServices] = useState([]);
       const [staffList, setStaffList] = useState([]);
-
-      // State-uri UI
+      const [loading, setLoading] = useState(true);
       const [showForm, setShowForm] = useState(false);
-      const [editAppId, setEditAppId] = useState(null);
+      const [editApp, setEditApp] = useState(null);
       const [search, setSearch] = useState("");
-      const [calDate, setCalDate] = useState(todayStr);
+      const [calDate, setCalDate] = useState(fmt(today));
+      const [form, setForm] = useState({clientName:"",phone:"",serviceId:"",staff:"",date:fmt(today),time:"09:00",notes:"",status:"in_asteptare"});
+      const [editService, setEditService] = useState(null);
+      const [serviceForm, setServiceForm] = useState(null);
       const [saving, setSaving] = useState(false);
-
-      // Formular Programare
-      const [form, setForm] = useState({
-        clientName: "", phone: "", serviceId: "", staff: "", 
-        date: todayStr, time: "09:00", notes: "", status: "in_asteptare"
-      });
-
-      // State-uri Secundare (Servicii / Staff)
-      const [showSvcForm, setShowSvcForm] = useState(false);
-      const [svcForm, setSvcForm] = useState({ name: "", duration: 60, price: 0, color: "#E8A4A4" });
-      const [editSvcId, setEditSvcId] = useState(null);
-
+      const [error, setError] = useState(null);
       const [showStaffForm, setShowStaffForm] = useState(false);
-      const [staffForm, setStaffForm] = useState({ name: "" });
-      const [editStaffId, setEditStaffId] = useState(null);
+      const [editStaff, setEditStaff] = useState(null);
+      const [staffForm, setStaffForm] = useState({name:""});
+      const [showServiceForm, setShowServiceForm] = useState(false);
+      const [weekModal, setWeekModal] = useState(null);
 
-      async function refreshAll() {
+      async function fetchAll() {
         setLoading(true);
-        const [a, c, s, st] = await Promise.all([
-          sb.from("appointments").select("*").order("date"),
+        const [a, cl, sv, st] = await Promise.all([
+          sb.from("appointments").select("*").order("date").order("time"),
           sb.from("clients").select("*").order("name"),
           sb.from("services").select("*").order("id"),
-          sb.from("staff").select("*").order("name")
+          sb.from("staff").select("*").order("name"),
         ]);
-        setAppointments(a.data || []);
-        setClients(c.data || []);
-        setServices(s.data || []);
-        setStaffList(st.data || []);
+        setAppointments(a.data||[]);
+        setClients(cl.data||[]);
+        setServices(sv.data||[]);
+        setStaffList(st.data||[]);
         setLoading(false);
       }
 
-      useEffect(() => { refreshAll(); }, []);
+      useEffect(()=>{fetchAll();},[]);
 
-      // --- AUTOCOMPLETE TELEFON ---
-      function handleNameChange(e) {
-        const name = e.target.value;
-        setForm(p => ({ ...p, clientName: name }));
-        const found = clients.find(c => c.name.toLowerCase().trim() === name.toLowerCase().trim());
-        if (found && found.phone) {
-          setForm(p => ({ ...p, phone: found.phone }));
-        }
+      const todayApps = appointments.filter(a=>a.date===fmt(today));
+      const tomorrow = fmt(new Date(today.getTime()+86400000));
+      const tomorrowApps = appointments.filter(a=>a.date===tomorrow);
+
+      const getWeekBounds = (offset=0) => {
+        const d = new Date(today);
+        const day = d.getDay()===0?7:d.getDay();
+        d.setDate(d.getDate() - day + 1 + offset*7);
+        const start = fmt(d);
+        const end = new Date(d); end.setDate(d.getDate()+6);
+        return {start, end:fmt(end)};
+      };
+      const thisWeek = getWeekBounds(0);
+      const nextWeek = getWeekBounds(1);
+      const thisWeekApps = appointments.filter(a=>a.date>=thisWeek.start&&a.date<=thisWeek.end);
+      const nextWeekApps = appointments.filter(a=>a.date>=nextWeek.start&&a.date<=nextWeek.end);
+
+      const calApps = appointments.filter(a=>a.date===calDate).sort((a,b)=>a.time.localeCompare(b.time));
+      const filteredClients = clients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||c.phone.includes(search));
+
+      function openAdd() {
+        setForm({clientName:"",phone:"",serviceId:services[0]?.id||"",staff:staffList[0]?.name||"",date:fmt(today),time:"09:00",notes:"",status:"in_asteptare"});
+        setEditApp(null); setShowForm(true); setError(null);
+      }
+      function openEdit(app) {
+        setForm({clientName:app.client_name,phone:app.phone,serviceId:app.service_id,staff:app.staff,date:app.date,time:app.time,notes:app.notes||"",status:app.status});
+        setEditApp(app.id); setShowForm(true); setError(null);
       }
 
-      // --- CRUD OPERATIONS ---
-
-      async function saveAppointment() {
-        if (!form.clientName || !form.serviceId) return alert("Completează numele și serviciul!");
-        setSaving(true);
-        
-        const data = {
-          client_name: form.clientName, phone: form.phone,
-          service_id: parseInt(form.serviceId), staff: form.staff,
-          date: form.date, time: form.time, notes: form.notes, status: form.status
-        };
-
-        if (editAppId) {
-          await sb.from("appointments").update(data).eq("id", editAppId);
+      async function saveApp() {
+        if(!form.clientName||!form.serviceId){setError("Completează numele și serviciul.");return;}
+        setSaving(true); setError(null);
+        const payload = {client_name:form.clientName,phone:form.phone,service_id:Number(form.serviceId),staff:form.staff,date:form.date,time:form.time,notes:form.notes,status:form.status};
+        if(editApp) {
+          await sb.from("appointments").update(payload).eq("id",editApp);
         } else {
-          await sb.from("appointments").insert(data);
-        }
-
-        // Sync Client
-        const exists = clients.find(c => c.name.toLowerCase().trim() === form.clientName.toLowerCase().trim());
-        if (exists) {
-          if (form.phone && form.phone !== exists.phone) {
-            await sb.from("clients").update({ phone: form.phone }).eq("id", exists.id);
+          await sb.from("appointments").insert(payload);
+          if(!clients.find(c=>c.name.toLowerCase()===form.clientName.toLowerCase())) {
+            await sb.from("clients").insert({name:form.clientName,phone:""});
           }
-        } else {
-          await sb.from("clients").insert({ name: form.clientName, phone: form.phone || "" });
         }
-
-        await refreshAll();
-        setSaving(false);
-        setShowForm(false);
+        await fetchAll(); setSaving(false); setShowForm(false);
       }
 
       async function deleteApp(id) {
-        if (!confirm("Sigur ștergi?")) return;
-        await sb.from("appointments").delete().eq("id", id);
-        refreshAll();
+        if(!window.confirm("Ștergi această programare?")) return;
+        await sb.from("appointments").delete().eq("id",id);
+        setAppointments(p=>p.filter(a=>a.id!==id));
       }
 
-      // --- RENDER PAGINI ---
+      function openAddService() { setServiceForm({name:"",duration:60,price:0,color:"#E8A4A4"}); setEditService(null); setShowServiceForm(true); }
+      function openEditService(svc) { setServiceForm({...svc}); setEditService(svc.id); setShowServiceForm(true); }
+      async function saveService() {
+        if(!serviceForm.name.trim()) return;
+        if(editService) {
+          await sb.from("services").update({name:serviceForm.name,duration:Number(serviceForm.duration),price:Number(serviceForm.price),color:serviceForm.color}).eq("id",editService);
+        } else {
+          await sb.from("services").insert({name:serviceForm.name,duration:Number(serviceForm.duration),price:Number(serviceForm.price),color:serviceForm.color});
+        }
+        await fetchAll(); setServiceForm(null); setShowServiceForm(false);
+      }
+      async function deleteService(id) {
+        if(!window.confirm("Ștergi acest serviciu?")) return;
+        await sb.from("services").delete().eq("id",id);
+        setServices(p=>p.filter(s=>s.id!==id));
+      }
 
-      const Dashboard = () => {
-        const azi = appointments.filter(a => a.date === todayStr);
-        return (
-          <div style={{ padding: isMobile ? "20px" : "40px" }}>
-            <h1 style={{ fontFamily: "Georgia, serif", fontSize: 28, marginBottom: 5 }}>Bună, Natalie! ✨</h1>
-            <p style={{ color: C.textLight, marginBottom: 25 }}>Rezumatul zilei de astăzi</p>
-            
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 15, marginBottom: 30 }}>
-              <div style={{ background: "#fff", padding: 20, borderRadius: 20, border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: C.textLight, textTransform: "uppercase" }}>Programări Azi</div>
-                <div style={{ fontSize: 32, fontWeight: 800, color: C.roseDark }}>{azi.length}</div>
-              </div>
-              <div style={{ background: "#fff", padding: 20, borderRadius: 20, border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: C.textLight, textTransform: "uppercase" }}>Total Clienți</div>
-                <div style={{ fontSize: 32, fontWeight: 800, color: C.gold }}>{clients.length}</div>
-              </div>
-            </div>
+      function openAddStaff() { setStaffForm({name:""}); setEditStaff(null); setShowStaffForm(true); }
+      function openEditStaff(s) { setStaffForm({name:s.name}); setEditStaff(s.id); setShowStaffForm(true); }
+      async function saveStaff() {
+        if(!staffForm.name.trim()) return;
+        if(editStaff) {
+          await sb.from("staff").update({name:staffForm.name}).eq("id",editStaff);
+        } else {
+          await sb.from("staff").insert({name:staffForm.name});
+        }
+        await fetchAll(); setShowStaffForm(false);
+      }
+      async function deleteStaff(id) {
+        if(!window.confirm("Ștergi acest specialist?")) return;
+        await sb.from("staff").delete().eq("id",id);
+        setStaffList(p=>p.filter(s=>s.id!==id));
+      }
 
-            <div style={{ background: "#fff", padding: 20, borderRadius: 24, border: `1px solid ${C.border}` }}>
-              <h3 style={{ marginBottom: 20, fontFamily: "Georgia, serif" }}>Urmează acum</h3>
-              {azi.length === 0 ? <p style={{ color: C.textLight }}>Nicio programare pentru azi.</p> : 
-                azi.sort((a,b) => a.time.localeCompare(b.time)).map(a => {
-                  const s = services.find(x => x.id === a.service_id);
-                  return (
-                    <div key={a.id} onClick={() => { setEditAppId(a.id); setForm({clientName: a.client_name, phone: a.phone||"", serviceId: a.service_id, staff: a.staff, date: a.date, time: a.time, notes: a.notes||"", status: a.status}); setShowForm(true); }} style={{ display: "flex", alignItems: "center", gap: 15, padding: "15px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
-                      <div style={{ color: C.roseDark, fontWeight: 800, fontSize: 15, width: 50 }}>{a.time}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700 }}>{a.client_name}</div>
-                        <div style={{ fontSize: 12, color: C.textLight }}>{s?.name} · {a.staff}</div>
-                      </div>
-                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: s?.color || C.rose }} />
-                    </div>
-                  );
-                })
-              }
-            </div>
+      const pad = isMobile ? "14px 16px 100px" : "32px 36px";
+
+      const Sidebar = () => (
+        <div style={{width:210,minWidth:210,background:"linear-gradient(180deg,#3D2C2C,#5C3A3A)",display:"flex",flexDirection:"column",padding:"28px 0",minHeight:"100vh",position:"sticky",top:0,height:"100vh",overflowY:"auto"}}>
+          <div style={{padding:"0 22px 24px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+            <div style={{fontFamily:"Georgia,serif",fontSize:18,fontWeight:700,color:"#F5D5D5"}}>Natalie Studio</div>
+            <div style={{fontSize:10,color:C.gold,letterSpacing:2,marginTop:3,textTransform:"uppercase"}}>Salon de Frumusețe</div>
           </div>
-        );
-      };
-
-      const Calendar = () => {
-        const dayApps = appointments.filter(a => a.date === calDate);
-        return (
-          <div style={{ padding: isMobile ? "20px" : "40px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h1 style={{ fontFamily: "Georgia, serif" }}>Calendar</h1>
-              <input type="date" value={calDate} onChange={e => setCalDate(e.target.value)} style={{ padding: "8px", borderRadius: 10, border: `1px solid ${C.border}`, fontFamily: "inherit" }} />
-            </div>
-            <div style={{ background: "#fff", borderRadius: 20, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-              {HOURS.map(h => {
-                const app = dayApps.find(a => a.time === h);
-                const s = services.find(x => x.id === app?.service_id);
-                return (
-                  <div key={h} style={{ display: "flex", minHeight: 60, borderBottom: `1px solid ${C.rosePale}` }}>
-                    <div style={{ width: 60, padding: 15, fontSize: 12, fontWeight: 700, color: C.textLight, textAlign: "right", borderRight: `1px solid ${C.rosePale}` }}>{h}</div>
-                    <div style={{ flex: 1, padding: 5 }}>
-                      {app && (
-                        <div onClick={() => { setEditAppId(app.id); setForm({clientName: app.client_name, phone: app.phone||"", serviceId: app.service_id, staff: app.staff, date: app.date, time: app.time, notes: app.notes||"", status: app.status}); setShowForm(true); }} style={{ background: (s?.color || C.rose) + "22", borderLeft: `4px solid ${s?.color || C.rose}`, padding: "8px 12px", borderRadius: 8, height: "100%", cursor: "pointer" }}>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>{app.client_name}</div>
-                          <div style={{ fontSize: 11 }}>{s?.name}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      };
-
-      const Clients = () => (
-        <div style={{ padding: isMobile ? "20px" : "40px" }}>
-          <h1 style={{ fontFamily: "Georgia, serif", marginBottom: 20 }}>Clienți</h1>
-          <FInput placeholder="Caută client..." value={search} onChange={e => setSearch(e.target.value)} />
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 15 }}>
-            {clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || (c.phone && c.phone.includes(search))).map(c => (
-              <div key={c.id} style={{ background: "#fff", padding: 20, borderRadius: 20, border: `1px solid ${C.border}` }}>
-                <div style={{ fontWeight: 800, fontSize: 17 }}>{c.name}</div>
-                <div style={{ color: C.textLight, fontSize: 14, marginTop: 5 }}>{c.phone || "Fără număr de telefon"}</div>
-                <div style={{ marginTop: 15, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: C.gold, textTransform: "uppercase" }}>
-                    {appointments.filter(a => a.client_name === c.name).length} Vizite
-                  </span>
-                  <Btn small variant="secondary" onClick={() => { setForm(p => ({ ...p, clientName: c.name, phone: c.phone || "" })); setEditAppId(null); setShowForm(true); }}>Programare Nouă</Btn>
-                </div>
-              </div>
+          <nav style={{flex:1,padding:"18px 10px"}}>
+            {NAV.map(item=>(
+              <button key={item.id} onClick={()=>setPage(item.id)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,background:page===item.id?"rgba(201,123,132,0.25)":"transparent",border:"none",color:page===item.id?"#F5D5D5":"rgba(255,255,255,0.45)",fontSize:13,fontWeight:page===item.id?700:400,cursor:"pointer",marginBottom:3,textAlign:"left",fontFamily:"inherit",borderLeft:page===item.id?`3px solid ${C.rose}`:"3px solid transparent"}}>
+                <span style={{fontSize:16}}>{item.icon}</span> {item.label}
+              </button>
             ))}
+          </nav>
+          <div style={{padding:"16px 22px",borderTop:"1px solid rgba(255,255,255,0.08)",fontSize:10,color:"rgba(255,255,255,0.3)"}}>
+            {new Date().toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"})}
           </div>
         </div>
       );
 
-      // --- RENDER STRUCTURĂ ---
+      const BottomNav = () => (
+        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:"#3D2C2C",display:"flex",borderTop:"1px solid rgba(255,255,255,0.1)",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
+          {NAV.map(item=>(
+            <button key={item.id} onClick={()=>setPage(item.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 2px 6px",border:"none",background:"transparent",cursor:"pointer",color:page===item.id?C.rose:"rgba(255,255,255,0.38)",fontFamily:"inherit"}}>
+              <span style={{fontSize:22,lineHeight:1}}>{item.icon}</span>
+              <span style={{fontSize:12,marginTop:3,fontWeight:page===item.id?700:400}}>{item.label}</span>
+              {page===item.id&&<div style={{width:18,height:2,background:C.rose,borderRadius:2,marginTop:3}}/>}
+            </button>
+          ))}
+        </div>
+      );
+
+      const MobileHeader = ({title, action}) => (
+        <div style={{position:"sticky",top:0,zIndex:50,background:C.bg,padding:"14px 18px 10px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontFamily:"Georgia,serif",fontSize:10,color:C.gold,letterSpacing:2,textTransform:"uppercase"}}>Natalie Studio</div>
+            <div style={{fontFamily:"Georgia,serif",fontSize:22,fontWeight:700,color:C.text,lineHeight:1.2}}>{title}</div>
+          </div>
+          {action}
+        </div>
+      );
+
+      const DashboardPage = () => (
+        <div>
+          {isMobile&&<MobileHeader title="Bună ziua! ✦" action={<Btn small onClick={openAdd}>+ Nou</Btn>}/>}
+          <div style={{padding:pad}}>
+            {!isMobile&&<div style={{marginBottom:26}}><h1 style={{margin:0,fontSize:30,fontFamily:"Georgia,serif",fontWeight:700}}>Bună ziua! ✦</h1><p style={{margin:"4px 0 0",color:C.textLight,fontSize:14}}>Rezumatul zilei de astăzi</p></div>}
+
+            {/* Stats */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
+              {[
+                {label:"Programări azi",value:todayApps.length,icon:"▦",color:C.roseDark,clickable:false},
+                {label:"Săpt. Curentă",value:thisWeekApps.length,icon:"◈",color:C.roseDark,clickable:true,onClick:()=>setWeekModal({title:"Săptămâna Curentă",apps:thisWeekApps})},
+                {label:"Programări mâine",value:tomorrowApps.length,icon:"◷",color:C.gold,clickable:false},
+                {label:"Săpt. Viitoare",value:nextWeekApps.length,icon:"◈",color:C.gold,clickable:true,onClick:()=>setWeekModal({title:"Săptămâna Viitoare",apps:nextWeekApps})},
+              ].map((s,i)=>(
+                <div key={i} onClick={s.clickable?s.onClick:undefined} style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,cursor:s.clickable?"pointer":"default"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                    <div>
+                      <div style={{fontSize:10,color:C.textLight,fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",marginBottom:6}}>{s.label}</div>
+                      <div style={{fontSize:24,fontWeight:800,color:C.text,fontFamily:"Georgia,serif",lineHeight:1}}>{s.value}</div>
+                    </div>
+                    <div style={{width:32,height:32,borderRadius:9,background:s.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:s.color}}>{s.icon}</div>
+                  </div>
+                  {s.clickable&&<div style={{fontSize:10,color:s.color,fontWeight:700,marginTop:8,letterSpacing:0.3}}>Apasă pentru detalii →</div>}
+                </div>
+              ))}
+            </div>
+
+            {/* Programări azi */}
+            <div style={{background:"#fff",borderRadius:18,padding:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <h2 style={{margin:0,fontSize:16,fontFamily:"Georgia,serif",fontWeight:700}}>Programări azi</h2>
+                {!isMobile&&<Btn small onClick={openAdd}>+ Adaugă</Btn>}
+              </div>
+              {loading?<Spinner/>:todayApps.length===0
+                ?<div style={{textAlign:"center",color:C.textLight,padding:"20px 0",fontSize:14}}>Nici o programare pe azi!</div>
+                :todayApps.sort((a,b)=>a.time.localeCompare(b.time)).map(app=>{
+                  const svc=services.find(s=>s.id===app.service_id);
+                  return <div key={app.id} onClick={()=>openEdit(app)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderBottom:`1px solid ${C.border}`,cursor:"pointer"}}>
+                    <div style={{width:44,fontWeight:800,color:C.roseDark,fontSize:13,flexShrink:0,textAlign:"center"}}>{app.time}</div>
+                    <div style={{width:4,height:38,borderRadius:4,background:svc?.color||C.rose,flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{app.client_name}</div>
+                      <div style={{fontSize:12,color:C.textLight,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{svc?.name} · {app.staff.split(" ")[0]}</div>
+                    </div>
+                  </div>;
+                })
+              }
+            </div>
+
+            {/* Programări mâine */}
+            <div style={{background:"#fff",borderRadius:18,padding:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <h2 style={{margin:0,fontSize:16,fontFamily:"Georgia,serif",fontWeight:700}}>Programări mâine</h2>
+              </div>
+              {loading?<Spinner/>:tomorrowApps.length===0
+                ?<div style={{textAlign:"center",color:C.textLight,padding:"20px 0",fontSize:14}}>Nici o programare pe mâine!</div>
+                :tomorrowApps.sort((a,b)=>a.time.localeCompare(b.time)).map(app=>{
+                  const svc=services.find(s=>s.id===app.service_id);
+                  return <div key={app.id} onClick={()=>openEdit(app)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderBottom:`1px solid ${C.border}`,cursor:"pointer"}}>
+                    <div style={{width:44,fontWeight:800,color:C.roseDark,fontSize:13,flexShrink:0,textAlign:"center"}}>{app.time}</div>
+                    <div style={{width:4,height:38,borderRadius:4,background:svc?.color||C.rose,flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{app.client_name}</div>
+                      <div style={{fontSize:12,color:C.textLight,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{svc?.name} · {app.staff.split(" ")[0]}</div>
+                    </div>
+                  </div>;
+                })
+              }
+            </div>
+
+            {/* Servicii populare */}
+            <div style={{background:"#fff",borderRadius:18,padding:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`}}>
+              <h2 style={{margin:"0 0 14px",fontSize:16,fontFamily:"Georgia,serif",fontWeight:700}}>Servicii populare</h2>
+              {services.map(svc=>{
+                const count=appointments.filter(a=>a.service_id===svc.id).length;
+                const max=Math.max(...services.map(s=>appointments.filter(a=>a.service_id===s.id).length),1);
+                return <div key={svc.id} style={{marginBottom:11}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
+                    <span style={{color:C.textMid,fontWeight:600}}>{svc.name}</span>
+                    <span style={{color:C.textLight}}>{count}</span>
+                  </div>
+                  <div style={{height:6,background:C.border,borderRadius:4,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${(count/max)*100}%`,background:svc.color,borderRadius:4}}/>
+                  </div>
+                </div>;
+              })}
+            </div>
+          </div>
+        </div>
+      );
+
+      const CalendarPage = () => (
+        <div>
+          {isMobile&&<MobileHeader title="Calendar" action={<Btn small onClick={openAdd}>+ Nou</Btn>}/>}
+          <div style={{padding:pad}}>
+            {!isMobile&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><h1 style={{margin:0,fontSize:30,fontFamily:"Georgia,serif",fontWeight:700}}>Calendar</h1><div style={{display:"flex",gap:10}}><input type="date" value={calDate} onChange={e=>setCalDate(e.target.value)} style={{padding:"9px 14px",borderRadius:10,border:`1.5px solid ${C.border}`,fontSize:14,background:"#fff",color:C.text,fontFamily:"inherit",outline:"none"}}/><Btn onClick={openAdd}>+ Programare</Btn></div></div>}
+            {isMobile&&<input type="date" value={calDate} onChange={e=>setCalDate(e.target.value)} style={{width:"100%",padding:"11px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:15,background:"#fff",color:C.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:14}}/>}
+            <div style={{background:"#fff",borderRadius:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,overflow:"hidden"}}>
+              <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`,fontFamily:"Georgia,serif",fontSize:15,fontWeight:700,color:C.roseDark}}>
+                {new Date(calDate+"T12:00:00").toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"})}
+                <span style={{fontSize:12,color:C.textLight,fontWeight:400,marginLeft:8}}>— {calApps.length} programări</span>
+              </div>
+              <div style={{padding:"0 14px 14px"}}>
+                {HOURS.map(hour=>{
+                  const app=calApps.find(a=>a.time===hour);
+                  const svc=app?services.find(s=>s.id===app.service_id):null;
+                  return <div key={hour} style={{display:"flex",gap:10,alignItems:"stretch",minHeight:44}}>
+                    <div style={{width:42,paddingTop:12,fontSize:11,color:C.textLight,fontWeight:700,flexShrink:0,textAlign:"right"}}>{hour}</div>
+                    <div style={{width:1,background:C.border,flexShrink:0}}/>
+                    <div style={{flex:1,paddingTop:6,paddingBottom:2}}>
+                      {app&&<div onClick={()=>openEdit(app)} style={{background:(svc?.color||C.rose)+"22",border:`1.5px solid ${svc?.color||C.rose}`,borderRadius:10,padding:"7px 12px",cursor:"pointer"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontWeight:700,fontSize:13}}>{app.client_name}</span>
+                          <span style={{fontSize:11,color:C.textMid}}>{svc?.name}</span>
+                        </div>
+                      </div>}
+                    </div>
+                  </div>;
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      const AppointmentsPage = () => (
+        <div>
+          {isMobile&&<MobileHeader title="Programări" action={<Btn small onClick={openAdd}>+ Nou</Btn>}/>}
+          <div style={{padding:pad}}>
+            {!isMobile&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><h1 style={{margin:0,fontSize:30,fontFamily:"Georgia,serif",fontWeight:700}}>Toate Programările</h1><Btn onClick={openAdd}>+ Programare nouă</Btn></div>}
+            {loading?<Spinner/>:isMobile?(
+              appointments.sort((a,b)=>b.date.localeCompare(a.date)||a.time.localeCompare(b.time)).map(app=>{
+                const svc=services.find(s=>s.id===app.service_id);
+                return <div key={app.id} style={{background:"#fff",borderRadius:16,padding:16,marginBottom:12,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(61,44,44,0.05)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                    <div style={{fontWeight:700,fontSize:15}}>{app.client_name}</div>
+                    <span style={{background:C.rosePale,color:C.roseDark,fontSize:12,padding:"3px 10px",borderRadius:20,fontWeight:700}}>{app.time}</span>
+                  </div>
+                  <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:10}}>
+                    <span style={{background:(svc?.color||C.rose)+"22",fontSize:12,padding:"3px 10px",borderRadius:20,fontWeight:600,color:C.text}}>{svc?.name}</span>
+                    <span style={{background:C.rosePale,color:C.roseDark,fontSize:12,padding:"3px 10px",borderRadius:20,fontWeight:700}}>
+                      {new Date(app.date+"T12:00:00").toLocaleDateString("ro-RO",{day:"numeric",month:"short"})}
+                    </span>
+                  </div>
+                  <div style={{fontSize:12,color:C.textLight,marginBottom:12}}>{app.staff}</div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>openEdit(app)} style={{flex:1,background:C.rosePale,border:"none",borderRadius:10,padding:9,cursor:"pointer",fontSize:13,color:C.roseDark,fontWeight:700}}>Editează</button>
+                    <button onClick={()=>deleteApp(app.id)} style={{background:"#FDE8E8",border:"none",borderRadius:10,padding:"9px 14px",cursor:"pointer",fontSize:15,color:"#C94A4A"}}>✕</button>
+                  </div>
+                </div>;
+              })
+            ):(
+              <div style={{background:"#fff",borderRadius:18,boxShadow:"0 2px 12px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,overflow:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead>
+                    <tr style={{background:C.rosePale}}>
+                      {["Client","Serviciu","Data","Ora","Specialist",""].map(h=>(
+                        <th key={h} style={{padding:"13px 16px",textAlign:"left",fontSize:10,fontWeight:800,color:C.textMid,letterSpacing:0.5,textTransform:"uppercase"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appointments.sort((a,b)=>b.date.localeCompare(a.date)||a.time.localeCompare(b.time)).map((app,i)=>{
+                      const svc=services.find(s=>s.id===app.service_id);
+                      return <tr key={app.id} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?"#fff":C.rosePale+"55"}}>
+                        <td style={{padding:"12px 16px"}}><div style={{fontWeight:700,fontSize:13}}>{app.client_name}</div></td>
+                        <td style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:7}}><div style={{width:8,height:8,borderRadius:"50%",background:svc?.color||C.rose}}/><span style={{fontSize:13}}>{svc?.name}</span></div></td>
+                        <td style={{padding:"12px 16px",fontSize:13}}>{new Date(app.date+"T12:00:00").toLocaleDateString("ro-RO")}</td>
+                        <td style={{padding:"12px 16px",fontSize:13,fontWeight:700,color:C.roseDark}}>{app.time}</td>
+                        <td style={{padding:"12px 16px",fontSize:13}}>{app.staff}</td>
+                        <td style={{padding:"12px 16px"}}>
+                          <div style={{display:"flex",gap:5}}>
+                            <button onClick={()=>openEdit(app)} style={{background:C.rosePale,border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,color:C.roseDark,fontWeight:700}}>Edit</button>
+                            <button onClick={()=>deleteApp(app.id)} style={{background:"#FDE8E8",border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,color:"#C94A4A"}}>✕</button>
+                          </div>
+                        </td>
+                      </tr>;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+      const ClientsPage = () => (
+        <div>
+          {isMobile&&<MobileHeader title="Clienți"/>}
+          <div style={{padding:pad}}>
+            {!isMobile&&<h1 style={{margin:"0 0 22px",fontSize:30,fontFamily:"Georgia,serif",fontWeight:700}}>Clienți</h1>}
+            <input placeholder="🔍  Caută după nume sau telefon..." value={search} onChange={e=>setSearch(e.target.value)}
+              style={{width:"100%",padding:"12px 16px",borderRadius:14,border:`1.5px solid ${C.border}`,fontSize:14,background:"#fff",color:C.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:16}}/>
+            {loading?<Spinner/>:(
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(270px,1fr))",gap:14}}>
+                {filteredClients.map(client=>{
+                  const history=appointments.filter(a=>a.client_name===client.name);
+                  const last=[...history].sort((a,b)=>b.date.localeCompare(a.date))[0];
+                  return <div key={client.id} style={{background:"#fff",borderRadius:16,padding:16,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`}}>
+                    <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:14}}>
+                      <div style={{width:44,height:44,borderRadius:"50%",background:`linear-gradient(135deg,${C.roseDark},${C.gold})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:"#fff",fontWeight:700,flexShrink:0}}>{client.name.charAt(0)}</div>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontWeight:700,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{client.name}</div>
+                        <div style={{fontSize:13,color:C.textLight}}>{client.phone}</div>
+                      </div>
+                    </div>
+                    <div style={{background:C.rosePale,borderRadius:10,padding:"10px 12px",marginBottom:last?12:0}}>
+                      <div style={{fontSize:10,color:C.textLight,fontWeight:700,letterSpacing:0.5}}>VIZITE</div>
+                      <div style={{fontSize:22,fontWeight:800,color:C.roseDark,fontFamily:"Georgia,serif"}}>{history.length}</div>
+                    </div>
+                    {last&&(()=>{const svc=services.find(s=>s.id===last.service_id);return(
+                      <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10}}>
+                        <div style={{fontSize:10,color:C.textLight,fontWeight:700,letterSpacing:0.5,marginBottom:3}}>ULTIMA VIZITĂ</div>
+                        <div style={{fontSize:13,color:C.textMid}}>{svc?.name} · {new Date(last.date+"T12:00:00").toLocaleDateString("ro-RO",{day:"numeric",month:"short",year:"numeric"})}</div>
+                      </div>
+                    );})()}
+                  </div>;
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+      const ServicesPage = () => (
+        <div>
+          {isMobile&&<MobileHeader title="Servicii" action={<Btn small onClick={openAddService}>+ Nou</Btn>}/>}
+          <div style={{padding:pad}}>
+            {!isMobile&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+              <h1 style={{margin:0,fontSize:30,fontFamily:"Georgia,serif",fontWeight:700}}>Servicii</h1>
+              <Btn onClick={openAddService}>+ Adaugă serviciu</Btn>
+            </div>}
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fill,minmax(250px,1fr))",gap:14}}>
+              {services.map(svc=>(
+                <div key={svc.id} style={{background:"#fff",borderRadius:16,padding:16,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                    <div style={{width:36,height:36,borderRadius:10,background:svc.color+"33",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:svc.color}}>✦</div>
+                  </div>
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:10}}>{svc.name}</div>
+                  <div style={{display:"flex",gap:12,marginBottom:14}}>
+                    <div><div style={{fontSize:10,color:C.textLight,fontWeight:700,letterSpacing:0.5}}>DURATĂ</div><div style={{fontSize:18,fontWeight:800,color:C.roseDark,fontFamily:"Georgia,serif"}}>{svc.duration}<span style={{fontSize:10,marginLeft:2}}>min</span></div></div>
+                    <div><div style={{fontSize:10,color:C.textLight,fontWeight:700,letterSpacing:0.5}}>PREȚ</div><div style={{fontSize:18,fontWeight:800,color:C.gold,fontFamily:"Georgia,serif"}}>{svc.price}<span style={{fontSize:10,marginLeft:2}}>RON</span></div></div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>openEditService(svc)} style={{flex:1,background:C.rosePale,border:"none",borderRadius:10,padding:"8px",cursor:"pointer",fontSize:13,color:C.roseDark,fontWeight:700}}>✏️ Editează</button>
+                    <button onClick={()=>deleteService(svc.id)} style={{background:"#FDE8E8",border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:13,color:"#C94A4A",fontWeight:700}}>✕</button>
+                  </div>
+                </div>
+              ))}
+              {services.length===0&&<div style={{textAlign:"center",color:C.textLight,padding:"40px 0",fontSize:14,gridColumn:"1/-1"}}>Niciun serviciu adăugat încă</div>}
+            </div>
+          </div>
+        </div>
+      );
+
+      const StaffPage = () => (
+        <div>
+          {isMobile&&<MobileHeader title="Specialiști" action={<Btn small onClick={openAddStaff}>+ Nou</Btn>}/>}
+          <div style={{padding:pad}}>
+            {!isMobile&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+              <h1 style={{margin:0,fontSize:30,fontFamily:"Georgia,serif",fontWeight:700}}>Specialiști</h1>
+              <Btn onClick={openAddStaff}>+ Adaugă specialist</Btn>
+            </div>}
+            {loading?<Spinner/>:(
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(250px,1fr))",gap:14}}>
+                {staffList.map(s=>{
+                  const appCount = appointments.filter(a=>a.staff===s.name).length;
+                  return <div key={s.id} style={{background:"#fff",borderRadius:16,padding:20,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`}}>
+                    <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:16}}>
+                      <div style={{width:48,height:48,borderRadius:"50%",background:`linear-gradient(135deg,${C.roseDark},${C.gold})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:"#fff",fontWeight:700,flexShrink:0}}>{s.name.charAt(0)}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,fontSize:16,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</div>
+                        <div style={{fontSize:12,color:C.textLight,marginTop:2}}>{appCount} programări total</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>openEditStaff(s)} style={{flex:1,background:C.rosePale,border:"none",borderRadius:10,padding:"8px",cursor:"pointer",fontSize:13,color:C.roseDark,fontWeight:700}}>✏️ Editează</button>
+                      <button onClick={()=>deleteStaff(s.id)} style={{background:"#FDE8E8",border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:13,color:"#C94A4A",fontWeight:700}}>✕</button>
+                    </div>
+                  </div>;
+                })}
+                {staffList.length===0&&<div style={{textAlign:"center",color:C.textLight,padding:"40px 0",fontSize:14,gridColumn:"1/-1"}}>Niciun specialist adăugat încă</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+      const pages = {dashboard:<DashboardPage/>,calendar:<CalendarPage/>,appointments:<AppointmentsPage/>,clients:<ClientsPage/>,services:<ServicesPage/>,staff:<StaffPage/>};
 
       return (
-        <div style={{ display: isMobile ? "block" : "flex", minHeight: "100vh" }}>
-          {/* Sidebar Desktop */}
-          {!isMobile && (
-            <div style={{ width: 260, background: "#3D2C2C", padding: "40px 25px", position: "sticky", top: 0, height: "100vh" }}>
-              <div style={{ marginBottom: 40 }}>
-                <h2 style={{ color: C.gold, fontFamily: "Georgia, serif", fontSize: 22 }}>Natalie Studio</h2>
-                <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, letterSpacing: 1, marginTop: 5, textTransform: "uppercase" }}>Beauty Management</div>
+        <div style={{display:"flex",minHeight:"100vh",background:C.bg,fontFamily:"'Nunito','Segoe UI',sans-serif",color:C.text}}>
+          {!isMobile&&<Sidebar/>}
+          <div style={{flex:1,overflow:"auto"}}>{pages[page]}</div>
+          {isMobile&&<BottomNav/>}
+
+          {weekModal&&(
+            <WeekSummaryModal title={weekModal.title} apps={weekModal.apps} services={services} onClose={()=>setWeekModal(null)}/>
+          )}
+
+          {showForm&&(
+            <Modal title={editApp?"Editează Programare":"Programare Nouă"} onClose={()=>setShowForm(false)}>
+              {error&&<div style={{background:"#FDE8E8",color:"#C94A4A",padding:"10px 14px",borderRadius:10,marginBottom:14,fontSize:13}}>{error}</div>}
+              <div style={{marginBottom:13,position:"relative"}}>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>Nume Client</label>
+                <input value={form.clientName} onChange={e=>setForm(f=>({...f,clientName:e.target.value,_showSuggestions:true}))} placeholder="ex: Maria Ionescu"
+                  style={{width:"100%",padding:"11px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:15,color:C.text,background:C.rosePale,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
+                {form._showSuggestions && form.clientName.length>=2 && clients.filter(c=>c.name.toLowerCase().startsWith(form.clientName.toLowerCase())).length>0 && (
+                  <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:`1.5px solid ${C.border}`,borderRadius:12,boxShadow:"0 8px 24px rgba(61,44,44,0.12)",zIndex:100,overflow:"hidden"}}>
+                    {clients.filter(c=>c.name.toLowerCase().startsWith(form.clientName.toLowerCase())).slice(0,5).map(c=>(
+                      <div key={c.id} onClick={()=>setForm(f=>({...f,clientName:c.name,phone:c.phone||"",_showSuggestions:false}))}
+                        style={{padding:"11px 16px",cursor:"pointer",fontSize:14,fontWeight:600,color:C.text,borderBottom:`1px solid ${C.border}`}}
+                        onMouseEnter={e=>e.currentTarget.style.background=C.rosePale}
+                        onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                        {c.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              {NAV.map(n => (
-                <div key={n.id} onClick={() => setPage(n.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 12, cursor: "pointer", marginBottom: 5, color: page === n.id ? C.rose : "rgba(255,255,255,0.5)", background: page === n.id ? "rgba(255,255,255,0.05)" : "transparent", fontWeight: page === n.id ? 700 : 400 }}>
-                  <span style={{ fontSize: 18 }}>{n.icon}</span> {n.label}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Main Content */}
-          <main style={{ flex: 1, paddingBottom: isMobile ? 100 : 40 }}>
-            {loading ? <Spinner /> : (
-              <>
-                {page === "dashboard" && <Dashboard />}
-                {page === "calendar" && <Calendar />}
-                {page === "clients" && <Clients />}
-                {/* Aici poți adăuga paginile Appointments, Services, Staff similare cu cele de sus */}
-                {page === "appointments" && <div style={{padding: 40}}><h1>Programări</h1><p>Lista completă de programări...</p></div>}
-                {page === "services" && <div style={{padding: 40}}><h1>Servicii</h1><p>Administrare servicii...</p></div>}
-                {page === "staff" && <div style={{padding: 40}}><h1>Specialiști</h1><p>Echipa Natalie Studio...</p></div>}
-              </>
-            )}
-          </main>
-
-          {/* Navigație Mobil */}
-          {isMobile && (
-            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#3D2C2C", display: "flex", padding: "10px 5px 25px", borderTop: "1px solid rgba(255,255,255,0.1)", zIndex: 900 }}>
-              {NAV.map(n => (
-                <div key={n.id} onClick={() => setPage(n.id)} style={{ flex: 1, textAlign: "center", color: page === n.id ? C.rose : "rgba(255,255,255,0.4)", fontSize: 10 }}>
-                  <div style={{ fontSize: 22, marginBottom: 4 }}>{n.icon}</div>
-                  {n.label}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* FAB Button */}
-          <button onClick={() => { setEditAppId(null); setForm({clientName: "", phone: "", serviceId: services[0]?.id || "", staff: staffList[0]?.name || "", date: todayStr, time: "09:00", notes: "", status: "in_asteptare"}); setShowForm(true); }} style={{ position: "fixed", bottom: isMobile ? 90 : 30, right: 20, width: 56, height: 56, borderRadius: "50%", background: C.roseDark, color: "#fff", border: "none", fontSize: 28, boxShadow: "0 4px 15px rgba(0,0,0,0.2)", cursor: "pointer", zIndex: 800 }}>+</button>
-
-          {/* Formular Modal */}
-          {showForm && (
-            <Modal title={editAppId ? "Editează Programare" : "Programare Nouă"} onClose={() => setShowForm(false)}>
-              <FInput label="Nume Clientă" value={form.clientName} onChange={handleNameChange} placeholder="Nume..." />
-              <FInput label="Telefon" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="07xx xxx xxx" />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <FInput label="Data" type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                <FSelect label="Ora" value={form.time} onChange={e => setForm({...form, time: e.target.value})}>
-                  {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+              <FSelect label="Serviciu" value={form.serviceId} onChange={e=>setForm(f=>({...f,serviceId:e.target.value}))}>
+                <option value="">-- Alege serviciul --</option>
+                {services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+              </FSelect>
+              <FSelect label="Specialist" value={form.staff} onChange={e=>setForm(f=>({...f,staff:e.target.value}))}>
+                <option value="">-- Alege specialistul --</option>
+                {staffList.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}
+              </FSelect>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <FInput label="Data" type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/>
+                <FSelect label="Ora" value={form.time} onChange={e=>setForm(f=>({...f,time:e.target.value}))}>
+                  {HOURS.map(h=><option key={h} value={h}>{h}</option>)}
                 </FSelect>
               </div>
-              <FSelect label="Serviciu" value={form.serviceId} onChange={e => setForm({...form, serviceId: e.target.value})}>
-                <option value="">Alege serviciu</option>
-                {services.map(s => <option key={s.id} value={s.id}>{s.name} ({s.price} lei)</option>)}
-              </FSelect>
-              <FSelect label="Specialist" value={form.staff} onChange={e => setForm({...form, staff: e.target.value})}>
-                {staffList.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-              </FSelect>
-              <Btn onClick={saveAppointment} disabled={saving} style={{ width: "100%", marginTop: 10 }}>{saving ? "Se salvează..." : "Salvează"}</Btn>
-              {editAppId && <Btn variant="danger" onClick={() => deleteApp(editAppId)} style={{ width: "100%", marginTop: 10 }}>Șterge Programarea</Btn>}
+              <div style={{marginBottom:16}}>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>Observații</label>
+                <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3}
+                  style={{width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:14,color:C.text,background:C.rosePale,outline:"none",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical"}}/>
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"space-between"}}>
+                {editApp&&<Btn variant="danger" onClick={()=>{deleteApp(editApp);setShowForm(false);}}>🗑 Șterge</Btn>}
+                <div style={{display:"flex",gap:10,marginLeft:"auto"}}>
+                  <Btn variant="secondary" onClick={()=>setShowForm(false)}>Anulează</Btn>
+                  <Btn onClick={saveApp} style={{opacity:saving?0.6:1}}>{saving?"Se salvează...":editApp?"Salvează":"Adaugă"}</Btn>
+                </div>
+              </div>
+            </Modal>
+          )}
+
+          {serviceForm&&(
+            <Modal title={editService?"Editează Serviciu":"Serviciu Nou"} onClose={()=>{setServiceForm(null);setShowServiceForm(false);}}>
+              <FInput label="Nume Serviciu" value={serviceForm.name} onChange={e=>setServiceForm(f=>({...f,name:e.target.value}))} placeholder="ex: Manichiură"/>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <FInput label="Durată (min)" type="number" value={serviceForm.duration} onChange={e=>setServiceForm(f=>({...f,duration:e.target.value}))}/>
+                <FInput label="Preț (RON)" type="number" value={serviceForm.price} onChange={e=>setServiceForm(f=>({...f,price:e.target.value}))}/>
+              </div>
+              <div style={{marginBottom:16}}>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:8,letterSpacing:0.5,textTransform:"uppercase"}}>Culoare</label>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                  {["#E8A4A4","#C9A96E","#A4C4E8","#B4A4E8","#E8C4A4","#A4E8C4","#F4A4C8","#A4E8E8","#E8E8A4","#C4A4E8"].map(col=>(
+                    <div key={col} onClick={()=>setServiceForm(f=>({...f,color:col}))}
+                      style={{width:32,height:32,borderRadius:"50%",background:col,cursor:"pointer",border:serviceForm.color===col?`3px solid ${C.text}`:"3px solid transparent",boxSizing:"border-box"}}/>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                <Btn variant="secondary" onClick={()=>{setServiceForm(null);setShowServiceForm(false);}}>Anulează</Btn>
+                <Btn onClick={saveService}>Salvează</Btn>
+              </div>
+            </Modal>
+          )}
+
+          {showStaffForm&&(
+            <Modal title={editStaff?"Editează Specialist":"Specialist Nou"} onClose={()=>setShowStaffForm(false)}>
+              <FInput label="Nume Specialist" value={staffForm.name} onChange={e=>setStaffForm(f=>({...f,name:e.target.value}))} placeholder="ex: Ana Popescu"/>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+                <Btn variant="secondary" onClick={()=>setShowStaffForm(false)}>Anulează</Btn>
+                <Btn onClick={saveStaff}>Salvează</Btn>
+              </div>
             </Modal>
           )}
         </div>
       );
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App/>);
   </script>
 </body>
 </html>

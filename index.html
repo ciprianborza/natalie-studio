@@ -649,6 +649,25 @@
                 <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>Observații</label>
                 <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3}
                   style={{width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:14,color:C.text,background:C.rosePale,outline:"none",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical"}}/>
+               <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,marginTop:15,letterSpacing:0.5,textTransform:"uppercase"}}>Număr Telefon</label>
+<input 
+  type="text"
+  value={form.phone} 
+  onChange={e=>setForm(f=>({...f,phone:e.target.value}))}
+  placeholder="07xx xxx xxx"
+  style={{
+    width: "100%",
+    padding: "12px",
+    borderRadius: "12px",
+    border: "1.5px solid #F0DDD8",
+    background: "#FDF0EF",
+    fontSize: "15px",
+    fontFamily: "inherit",
+    outline: "none",
+    marginBottom: "10px"
+  }}
+/>
+
               </div>
               <div style={{display:"flex",gap:10,justifyContent:"space-between"}}>
                 {editApp&&<Btn variant="danger" onClick={()=>{deleteApp(editApp);setShowForm(false);}}>🗑 Șterge</Btn>}

@@ -33,7 +33,6 @@
       border: "#F0DDD8", success: "#8AAF8A", warn: "#D4A04A",
     };
 
-    // Ore de la 06:00 la 21:00, din 30 în 30 de minute
     const HOURS = Array.from({length:32},(_,i)=>{const h=Math.floor(i/2)+6;const m=i%2===0?"00":"30";return `${String(h).padStart(2,"0")}:${m}`;}).filter(t=>t<="21:00");
 
     const NAV = [
@@ -202,27 +201,47 @@
       const nextWeekApps = appointments.filter(a=>a.date>=nextWeek.start&&a.date<=nextWeek.end);
 
       const calApps = appointments.filter(a=>a.date===calDate).sort((a,b)=>a.time.localeCompare(b.time));
-      const filteredClients = clients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||c.phone.includes(search));
+      const filteredClients = clients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||(c.phone||"").includes(search));
 
       function openAdd() {
         setForm({clientName:"",phone:"",serviceId:services[0]?.id||"",staff:staffList[0]?.name||"",date:fmt(today),time:"09:00",notes:"",status:"in_asteptare"});
         setEditApp(null); setShowForm(true); setError(null);
       }
       function openEdit(app) {
-        setForm({clientName:app.client_name,phone:app.phone,serviceId:app.service_id,staff:app.staff,date:app.date,time:app.time,notes:app.notes||"",status:app.status});
+        setForm({clientName:app.client_name,phone:app.phone||"",serviceId:app.service_id,staff:app.staff,date:app.date,time:app.time,notes:app.notes||"",status:app.status});
         setEditApp(app.id); setShowForm(true); setError(null);
       }
 
       async function saveApp() {
         if(!form.clientName||!form.serviceId){setError("Completează numele și serviciul.");return;}
         setSaving(true); setError(null);
-        const payload = {client_name:form.clientName,phone:form.phone,service_id:Number(form.serviceId),staff:form.staff,date:form.date,time:form.time,notes:form.notes,status:form.status};
+        const payload = {
+          client_name:form.clientName,
+          phone:form.phone||"",
+          service_id:Number(form.serviceId),
+          staff:form.staff,
+          date:form.date,
+          time:form.time,
+          notes:form.notes,
+          status:form.status
+        };
         if(editApp) {
           await sb.from("appointments").update(payload).eq("id",editApp);
+          // Dacă a completat telefonul, actualizează și clientul
+          if(form.phone) {
+            const existing = clients.find(c=>c.name.toLowerCase()===form.clientName.toLowerCase());
+            if(existing) {
+              await sb.from("clients").update({phone:form.phone}).eq("id",existing.id);
+            }
+          }
         } else {
           await sb.from("appointments").insert(payload);
-          if(!clients.find(c=>c.name.toLowerCase()===form.clientName.toLowerCase())) {
-            await sb.from("clients").insert({name:form.clientName,phone:""});
+          const existing = clients.find(c=>c.name.toLowerCase()===form.clientName.toLowerCase());
+          if(!existing) {
+            await sb.from("clients").insert({name:form.clientName,phone:form.phone||""});
+          } else if(form.phone && !existing.phone) {
+            // Actualizează telefonul dacă clientul există dar nu are telefon
+            await sb.from("clients").update({phone:form.phone}).eq("id",existing.id);
           }
         }
         await fetchAll(); setSaving(false); setShowForm(false);
@@ -316,8 +335,6 @@
           {isMobile&&<MobileHeader title="Bună ziua! ✦" action={<Btn small onClick={openAdd}>+ Nou</Btn>}/>}
           <div style={{padding:pad}}>
             {!isMobile&&<div style={{marginBottom:26}}><h1 style={{margin:0,fontSize:30,fontFamily:"Georgia,serif",fontWeight:700}}>Bună ziua! ✦</h1><p style={{margin:"4px 0 0",color:C.textLight,fontSize:14}}>Rezumatul zilei de astăzi</p></div>}
-
-            {/* Stats */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
               {[
                 {label:"Programări azi",value:todayApps.length,icon:"▦",color:C.roseDark,clickable:false},
@@ -338,7 +355,6 @@
               ))}
             </div>
 
-            {/* Programări azi */}
             <div style={{background:"#fff",borderRadius:18,padding:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <h2 style={{margin:0,fontSize:16,fontFamily:"Georgia,serif",fontWeight:700}}>Programări azi</h2>
@@ -360,7 +376,6 @@
               }
             </div>
 
-            {/* Programări mâine */}
             <div style={{background:"#fff",borderRadius:18,padding:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`,marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <h2 style={{margin:0,fontSize:16,fontFamily:"Georgia,serif",fontWeight:700}}>Programări mâine</h2>
@@ -381,7 +396,6 @@
               }
             </div>
 
-            {/* Servicii populare */}
             <div style={{background:"#fff",borderRadius:18,padding:18,boxShadow:"0 2px 10px rgba(61,44,44,0.06)",border:`1px solid ${C.border}`}}>
               <h2 style={{margin:"0 0 14px",fontSize:16,fontFamily:"Georgia,serif",fontWeight:700}}>Servicii populare</h2>
               {services.map(svc=>{
@@ -467,7 +481,7 @@
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
                   <thead>
                     <tr style={{background:C.rosePale}}>
-                      {["Client","Serviciu","Data","Ora","Specialist",""].map(h=>(
+                      {["Client","Telefon","Serviciu","Data","Ora","Specialist",""].map(h=>(
                         <th key={h} style={{padding:"13px 16px",textAlign:"left",fontSize:10,fontWeight:800,color:C.textMid,letterSpacing:0.5,textTransform:"uppercase"}}>{h}</th>
                       ))}
                     </tr>
@@ -477,6 +491,7 @@
                       const svc=services.find(s=>s.id===app.service_id);
                       return <tr key={app.id} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?"#fff":C.rosePale+"55"}}>
                         <td style={{padding:"12px 16px"}}><div style={{fontWeight:700,fontSize:13}}>{app.client_name}</div></td>
+                        <td style={{padding:"12px 16px",fontSize:12,color:C.textLight}}>{app.phone||"—"}</td>
                         <td style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:7}}><div style={{width:8,height:8,borderRadius:"50%",background:svc?.color||C.rose}}/><span style={{fontSize:13}}>{svc?.name}</span></div></td>
                         <td style={{padding:"12px 16px",fontSize:13}}>{new Date(app.date+"T12:00:00").toLocaleDateString("ro-RO")}</td>
                         <td style={{padding:"12px 16px",fontSize:13,fontWeight:700,color:C.roseDark}}>{app.time}</td>
@@ -514,7 +529,7 @@
                       <div style={{width:44,height:44,borderRadius:"50%",background:`linear-gradient(135deg,${C.roseDark},${C.gold})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:"#fff",fontWeight:700,flexShrink:0}}>{client.name.charAt(0)}</div>
                       <div style={{minWidth:0}}>
                         <div style={{fontWeight:700,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{client.name}</div>
-                        <div style={{fontSize:13,color:C.textLight}}>{client.phone}</div>
+                        <div style={{fontSize:13,color:C.textLight}}>{client.phone||"—"}</div>
                       </div>
                     </div>
                     <div style={{background:C.rosePale,borderRadius:10,padding:"10px 12px",marginBottom:last?12:0}}>
@@ -614,6 +629,8 @@
           {showForm&&(
             <Modal title={editApp?"Editează Programare":"Programare Nouă"} onClose={()=>setShowForm(false)}>
               {error&&<div style={{background:"#FDE8E8",color:"#C94A4A",padding:"10px 14px",borderRadius:10,marginBottom:14,fontSize:13}}>{error}</div>}
+
+              {/* Nume client cu autocomplete */}
               <div style={{marginBottom:13,position:"relative"}}>
                 <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>Nume Client</label>
                 <input value={form.clientName} onChange={e=>setForm(f=>({...f,clientName:e.target.value,_showSuggestions:true}))} placeholder="ex: Maria Ionescu"
@@ -625,12 +642,14 @@
                         style={{padding:"11px 16px",cursor:"pointer",fontSize:14,fontWeight:600,color:C.text,borderBottom:`1px solid ${C.border}`}}
                         onMouseEnter={e=>e.currentTarget.style.background=C.rosePale}
                         onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                        {c.name}
+                        <div>{c.name}</div>
+                        {c.phone&&<div style={{fontSize:11,color:C.textLight,marginTop:2}}>{c.phone}</div>}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+
               <FSelect label="Serviciu" value={form.serviceId} onChange={e=>setForm(f=>({...f,serviceId:e.target.value}))}>
                 <option value="">-- Alege serviciul --</option>
                 {services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
@@ -645,30 +664,30 @@
                   {HOURS.map(h=><option key={h} value={h}>{h}</option>)}
                 </FSelect>
               </div>
-              <div style={{marginBottom:16}}>
+
+              {/* Observatii */}
+              <div style={{marginBottom:13}}>
                 <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>Observații</label>
                 <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={3}
                   style={{width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:14,color:C.text,background:C.rosePale,outline:"none",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical"}}/>
-               <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,marginTop:15,letterSpacing:0.5,textTransform:"uppercase"}}>Număr Telefon</label>
-<input 
-  type="text"
-  value={form.phone} 
-  onChange={e=>setForm(f=>({...f,phone:e.target.value}))}
-  placeholder="07xx xxx xxx"
-  style={{
-    width: "100%",
-    padding: "12px",
-    borderRadius: "12px",
-    border: "1.5px solid #F0DDD8",
-    background: "#FDF0EF",
-    fontSize: "15px",
-    fontFamily: "inherit",
-    outline: "none",
-    marginBottom: "10px"
-  }}
-/>
-
               </div>
+
+              {/* Telefon - optional */}
+              <div style={{marginBottom:16}}>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.textMid,marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>
+                  Telefon <span style={{color:C.textLight,fontWeight:400,textTransform:"none",fontSize:11}}>(opțional — pentru SMS reminders)</span>
+                </label>
+                <input
+                  value={form.phone}
+                  onChange={e=>setForm(f=>({...f,phone:e.target.value}))}
+                  placeholder="+40743021461"
+                  style={{width:"100%",padding:"11px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,fontSize:15,color:C.text,background:C.rosePale,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}
+                />
+                {form.phone && !/^\+40[0-9]{9}$/.test(form.phone.replace(/\s/g,"")) && (
+                  <div style={{fontSize:11,color:C.warn,marginTop:5}}>⚠ Format recomandat: +40743021461</div>
+                )}
+              </div>
+
               <div style={{display:"flex",gap:10,justifyContent:"space-between"}}>
                 {editApp&&<Btn variant="danger" onClick={()=>{deleteApp(editApp);setShowForm(false);}}>🗑 Șterge</Btn>}
                 <div style={{display:"flex",gap:10,marginLeft:"auto"}}>

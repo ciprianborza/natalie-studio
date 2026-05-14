@@ -98,7 +98,7 @@
       return <button {...props} style={{padding:small?"7px 14px":"10px 20px",borderRadius:12,fontWeight:700,fontSize:small?12:14,cursor:"pointer",fontFamily:"inherit",...s[variant],...props.style}}>{children}</button>;
     }
 
-    function WeekSummaryModal({title, apps, services, onClose}) {
+    function WeekSummaryModal({title, apps, services, onClose, onEditApp}) {
       const grouped = {};
       [...apps].sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)).forEach(app=>{
         if(!grouped[app.date]) grouped[app.date]=[];
@@ -122,13 +122,17 @@
                     {dayApps.map(app=>{
                       const svc = services.find(s=>s.id===app.service_id);
                       return (
-                        <div key={app.id} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
+                        <div key={app.id} onClick={()=>{onClose();onEditApp(app);}}
+                          style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderBottom:`1px solid ${C.border}`,cursor:"pointer"}}
+                          onMouseEnter={e=>e.currentTarget.style.background=C.rosePale}
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                           <div style={{width:44,fontWeight:800,color:C.roseDark,fontSize:13,flexShrink:0,textAlign:"center"}}>{app.time}</div>
                           <div style={{width:4,height:36,borderRadius:4,background:svc?.color||C.rose,flexShrink:0}}/>
                           <div style={{flex:1,minWidth:0}}>
                             <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{app.client_name}</div>
                             <div style={{fontSize:12,color:C.textLight}}>{svc?.name}{app.staff ? ` · ${app.staff.split(" ")[0]}` : ""}</div>
                           </div>
+                          <div style={{fontSize:11,color:C.textLight}}>✏️</div>
                         </div>
                       );
                     })}
@@ -623,7 +627,7 @@
           {isMobile&&<BottomNav/>}
 
           {weekModal&&(
-            <WeekSummaryModal title={weekModal.title} apps={weekModal.apps} services={services} onClose={()=>setWeekModal(null)}/>
+            <WeekSummaryModal title={weekModal.title} apps={weekModal.apps} services={services} onClose={()=>setWeekModal(null)} onEditApp={openEdit}/>
           )}
 
           {showForm&&(

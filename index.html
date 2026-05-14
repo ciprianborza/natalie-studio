@@ -287,7 +287,7 @@
         setStaffList(p=>p.filter(s=>s.id!==id));
       }
 
-      const pad = isMobile ? "14px 16px 100px" : "32px 36px";
+      const pad = isMobile ? "14px 16px 120px" : "32px 36px";
 
       const Sidebar = () => (
         <div style={{width:210,minWidth:210,background:"linear-gradient(180deg,#3D2C2C,#5C3A3A)",display:"flex",flexDirection:"column",padding:"28px 0",minHeight:"100vh",position:"sticky",top:0,height:"100vh",overflowY:"auto"}}>
@@ -309,7 +309,7 @@
       );
 
       const BottomNav = () => (
-        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:"#3D2C2C",display:"flex",borderTop:"1px solid rgba(255,255,255,0.1)",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
+        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:"#3D2C2C",display:"flex",borderTop:"1px solid rgba(255,255,255,0.1)",paddingBottom:"max(env(safe-area-inset-bottom, 12px), 12px)"}}>
           {NAV.map(item=>(
             <button key={item.id} onClick={()=>setPage(item.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 2px 6px",border:"none",background:"transparent",cursor:"pointer",color:page===item.id?C.rose:"rgba(255,255,255,0.38)",fontFamily:"inherit"}}>
               <span style={{fontSize:22,lineHeight:1}}>{item.icon}</span>
